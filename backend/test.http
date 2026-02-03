@@ -1,6 +1,16 @@
 ### Health
 GET http://localhost:3000/api/health
 
+POST http://localhost:3000/api/admin/routes
+Content-Type: application/json
+
+{
+  "routeId": "R-CHD-01",
+  "name": "Chandigarh Sector 17 to Mohali",
+  "city": "Chandigarh"
+}
+
+
 ### Send GPS update
 POST http://localhost:3000/api/gps/update
 Content-Type: application/json
