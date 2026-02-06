@@ -1,4 +1,19 @@
+import { useEffect, useState } from "react";
+
 export default function GovHeader({ lastSyncText, backendOk }) {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("theme") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  }
+
   return (
     <header className="gov-header">
       <div className="gov-header-row">
@@ -12,10 +27,17 @@ export default function GovHeader({ lastSyncText, backendOk }) {
 
         <div className="gov-status">
           <div className={`pill ${backendOk ? "ok" : "bad"}`}>
-            Service: {backendOk ? "Online" : "Offline"}
+            <span className="status-dot" />
+            Service: {backendOk ? "Operational" : "Down"}
           </div>
+
           <div className="pill">{lastSyncText}</div>
           <div className="pill">Helpline: 1800-XXX-XXXX</div>
+
+          {/* Dark mode toggle */}
+          <button className="theme-btn" onClick={toggleTheme} title="Toggle theme">
+            {theme === "dark" ? "🌙 Night" : "☀️ Day"}
+          </button>
         </div>
       </div>
     </header>

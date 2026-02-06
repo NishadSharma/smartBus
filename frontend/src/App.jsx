@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LiveMap from "./pages/LiveMap";
 import BusDetails from "./pages/BusDetails";
 
+
 export default function App() {
   return (
     <BrowserRouter>

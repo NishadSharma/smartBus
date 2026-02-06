@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from "react-leaflet";
+import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, TileLayer, Popup, CircleMarker } from "react-leaflet";
 import { Link } from "react-router-dom";
 import L from "leaflet";
 
 import GovHeader from "../components/GovHeader";
+import BusMarker from "../components/BusMarker";
 import { getLiveBuses, getRoutes, getStops } from "../api";
 
-// Fix Leaflet marker icons (Vite/React)
+// Fix Leaflet marker icons (for stops)
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -18,6 +20,13 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+function normalizeList(payload) {
+  // Supports both: 1) array, 2) {data: array}, 3) {ok:true, data: array}
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  return [];
+}
+
 export default function LiveMap() {
   const [busQuery, setBusQuery] = useState("");
   const [selectedBusId, setSelectedBusId] = useState(null);
@@ -26,170 +35,267 @@ export default function LiveMap() {
   const [routes, setRoutes] = useState([]);
   const [selectedRouteId, setSelectedRouteId] = useState("");
   const [stops, setStops] = useState([]);
+
   const [status, setStatus] = useState("Loading…");
-  const [error, setError] = useState("");
+
+  // Separate errors (so you know EXACTLY what failed)
+  const [routesError, setRoutesError] = useState("");
+  const [stopsError, setStopsError] = useState("");
+  const [busesError, setBusesError] = useState("");
+
+  // Loading states
+  const [routesLoading, setRoutesLoading] = useState(true);
+  const [stopsLoading, setStopsLoading] = useState(false);
+
+  // IMPORTANT: buses skeleton should show ONLY on first load
+  const [busesFirstLoad, setBusesFirstLoad] = useState(true);
+  const [busesSyncing, setBusesSyncing] = useState(false);
+
+  // Map + marker refs
+  const mapRef = useRef(null);
+  const busMarkerRefs = useRef({});
 
   // Load routes once
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
-        setError("");
-        const data = await getRoutes();
-        const list = Array.isArray(data) ? data : [];
+        setRoutesError("");
+        setRoutesLoading(true);
+
+        const res = await getRoutes();
+        const list = normalizeList(res);
+
+        if (cancelled) return;
         setRoutes(list);
 
+        // choose first route by default
         if (list.length > 0) setSelectedRouteId(list[0].routeId);
       } catch (e) {
-        setError(`Routes not available: ${e.message}`);
+        if (cancelled) return;
+        setRoutes([]);
+        setRoutesError(e?.message || "Failed to load routes");
+      } finally {
+        if (cancelled) return;
+        setRoutesLoading(false);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Load stops when route changes
   useEffect(() => {
+    let cancelled = false;
+
     if (!selectedRouteId) {
       setStops([]);
+      setStopsError("");
       return;
     }
+
     (async () => {
       try {
-        setError("");
-        const data = await getStops(selectedRouteId);
-        setStops(Array.isArray(data) ? data : []);
+        setStopsError("");
+        setStopsLoading(true);
+
+        const res = await getStops(selectedRouteId);
+        const list = normalizeList(res);
+
+        if (cancelled) return;
+        setStops(list);
       } catch (e) {
+        if (cancelled) return;
         setStops([]);
-        setError(`Stops not available: ${e.message}`);
+        setStopsError(e?.message || "Failed to load stops");
+      } finally {
+        if (cancelled) return;
+        setStopsLoading(false);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedRouteId]);
 
   // Poll buses every 5 seconds
   useEffect(() => {
-    let timer;
+    let cancelled = false;
 
-    async function load() {
+    async function loadOnceOrPoll() {
       try {
-        setError("");
-        const data = await getLiveBuses();
-        setBuses(Array.isArray(data) ? data : []);
+        setBusesError("");
+
+        // Skeleton only on very first load; after that show subtle syncing
+        if (busesFirstLoad) {
+          // show skeleton (handled in UI)
+        } else {
+          setBusesSyncing(true);
+        }
+
+        const res = await getLiveBuses();
+        const list = normalizeList(res);
+
+        if (cancelled) return;
+        setBuses(list);
+
         setStatus(`Last sync: ${new Date().toLocaleTimeString()}`);
       } catch (e) {
-        setError(`Live buses fetch failed: ${e.message}`);
+        if (cancelled) return;
+        setBusesError(e?.message || "Failed to fetch live buses");
         setStatus("Backend unreachable");
+      } finally {
+        if (cancelled) return;
+        setBusesFirstLoad(false);
+        setBusesSyncing(false);
       }
     }
 
-    load();
-    timer = setInterval(load, 5000);
-    return () => clearInterval(timer);
-  }, []);
+    loadOnceOrPoll();
+    const timer = setInterval(loadOnceOrPoll, 5000);
 
-  // Filter buses by selected route if bus objects include routeId
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [busesFirstLoad]);
+
+  // Derived: visible buses by route (if routeId exists)
   const visibleBuses = useMemo(() => {
     if (!selectedRouteId) return buses;
     const anyRouteIdPresent = buses.some((b) => b.routeId);
-    if (!anyRouteIdPresent) return buses; // fallback (until you add routeId to buses)
+    if (!anyRouteIdPresent) return buses;
     return buses.filter((b) => b.routeId === selectedRouteId);
   }, [buses, selectedRouteId]);
 
-  // Center map using first stop if available
+  // Derived: search filter
+  const filteredBuses = useMemo(() => {
+    const q = busQuery.trim().toLowerCase();
+    if (!q) return visibleBuses;
+    return visibleBuses.filter((b) => String(b.busId || "").toLowerCase().includes(q));
+  }, [visibleBuses, busQuery]);
+
+  // Map center
   const mapCenter = useMemo(() => {
     if (stops.length > 0) return [stops[0].lat, stops[0].lng];
     return [30.7333, 76.7794];
   }, [stops]);
 
-  // Header status lights
-  const backendOk = !String(error).toLowerCase().includes("failed to fetch");
-  const lastSyncText = status || `Last sync: ${new Date().toLocaleTimeString()}`;
+  // Header status
+  const backendOk =
+    !routesError && !stopsError && !busesError && !String(status).toLowerCase().includes("unreachable");
+
+  // Focus animation
+  function focusBus(bus) {
+    if (!bus || bus.lat == null || bus.lng == null) return;
+    setSelectedBusId(bus.busId);
+
+    if (mapRef.current) {
+      mapRef.current.flyTo([bus.lat, bus.lng], 16, { duration: 1.2 });
+    }
+
+    setTimeout(() => {
+      const marker = busMarkerRefs.current[bus.busId];
+      if (marker && typeof marker.openPopup === "function") marker.openPopup();
+    }, 650);
+  }
 
   return (
     <div className="gov-shell">
-      <GovHeader lastSyncText={lastSyncText} backendOk={backendOk} />
-      <div
-        style={{
-          background: "#eef2ff",
-          borderBottom: "1px solid #c7d2fe",
-          padding: "8px 16px",
-          fontSize: 12,
-          color: "#1e3a8a",
-        }}
->
+      <GovHeader lastSyncText={status} backendOk={backendOk} />
+
+      <div className="gov-banner">
         ℹ️ This system displays live bus location data for public information purposes.
-        </div>
+      </div>
 
-
-      <main className="gov-main">
-        {/* Left panel */}
+      <motion.main
+        className="gov-main"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        {/* LEFT PANEL */}
         <section className="card left-panel">
           <div className="card-h">
             <div className="h">Controls</div>
             <div className="muted">Route & display</div>
           </div>
+
           <div className="card-b">
             <div className="label">Select Route</div>
-            <select
-              className="select"
-              value={selectedRouteId}
-              onChange={(e) => setSelectedRouteId(e.target.value)}
-            >
-              {routes.length === 0 ? (
-                <option value="">
-                  No routes configured by authority
-                </option>
 
-              ) : (
-                routes.map((r) => (
-                  <option key={r.routeId} value={r.routeId}>
-                    {r.routeId} — {r.name}
-                  </option>
-                ))
-              )}
-            </select>
-
-            <div className="divider" />
-
-            <div className="row">
-              <button className="btn" onClick={() => window.location.reload()}>
-                Refresh
-              </button>
-              <button
+            {routesLoading ? (
+              <div className="skel skel-line lg" style={{ height: 40 }} />
+            ) : (
+              <select
                 className="select"
-                style={{ cursor: "pointer" }}
-                onClick={() => alert("Admin module will be added later")}
+                value={selectedRouteId}
+                onChange={(e) => setSelectedRouteId(e.target.value)}
               >
-                Admin
-              </button>
-            </div>
+                {routes.length === 0 ? (
+                  <option value="">No routes configured by authority</option>
+                ) : (
+                  routes.map((r) => (
+                    <option key={r.routeId} value={r.routeId}>
+                      {r.routeId} — {r.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
 
-            <div className="divider" />
-
-            <div className="muted">
-              Stops: <b>{stops.length}</b> · Buses: <b>{visibleBuses.length}</b>
-            </div>
-
-            {error && (
+            {routesError && (
               <div style={{ marginTop: 10, color: "#b91c1c", fontSize: 12 }}>
-                {error}
+                Routes error: {routesError}
               </div>
             )}
 
             <div className="divider" />
 
-            <div className="label">Legend</div>
-            <div className="muted">● Stops (blue circle) · 📍 Bus (marker)</div>
+            <div className="muted">
+              Stops: <b>{stops.length}</b> · Buses: <b>{visibleBuses.length}</b>
+              {busesSyncing ? <span style={{ marginLeft: 8 }}>· Syncing…</span> : null}
+            </div>
+
+            {stopsLoading && (
+              <div className="muted" style={{ marginTop: 6 }}>
+                Loading stops…
+              </div>
+            )}
+
+            {stopsError && (
+              <div style={{ marginTop: 10, color: "#b91c1c", fontSize: 12 }}>
+                Stops error: {stopsError}
+              </div>
+            )}
+
+            <div className="divider" />
+
+            <div className="label">Debug (for you)</div>
+            <div className="muted" style={{ wordBreak: "break-word" }}>
+              API: routes={routes.length}, stops={stops.length}, buses={buses.length}
+            </div>
           </div>
-          
         </section>
 
-        {/* Map */}
+        {/* MAP */}
         <section className="card map-card">
           <div className="card-h">
             <div className="h">Live Map</div>
-            <div className="muted">Interactive tracking</div>
+            <div className="muted">{stopsLoading ? "Loading stops…" : "Interactive tracking"}</div>
           </div>
 
           <div className="map-wrap">
-            <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%" }}>
+            <MapContainer
+              center={mapCenter}
+              zoom={13}
+              whenCreated={(map) => (mapRef.current = map)}
+              style={{ height: "100%", width: "100%" }}
+            >
               <TileLayer
                 attribution="&copy; OpenStreetMap contributors"
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -200,11 +306,10 @@ export default function LiveMap() {
                 <CircleMarker key={s.stopId} center={[s.lat, s.lng]} radius={6}>
                   <Popup>
                     <div>
-                      <div style={{ fontWeight: 800 }}>
-                        {s.stopId} (#{s.sequence})
+                      <div style={{ fontWeight: 800 }}>{s.name_en}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>
+                        {s.stopId} · Route {s.routeId} · #{s.sequence}
                       </div>
-                      <div>{s.name_en}</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>{s.routeId}</div>
                     </div>
                   </Popup>
                 </CircleMarker>
@@ -212,72 +317,129 @@ export default function LiveMap() {
 
               {/* Buses */}
               {visibleBuses.map((b) => (
-                  <Marker
-                    key={b.busId}
-                    position={[b.lat, b.lng]}
-                    opacity={selectedBusId && b.busId !== selectedBusId ? 0.5 : 1}>
+                <BusMarker
+                  key={b.busId}
+                  position={[b.lat, b.lng]}
+                  eventHandlers={{
+                    add: (e) => (busMarkerRefs.current[b.busId] = e.target),
+                    click: () => setSelectedBusId(b.busId),
+                  }}
+                >
                   <Popup>
                     <div>
                       <div style={{ fontWeight: 800 }}>{b.busId}</div>
                       {b.routeId && <div>Route: {b.routeId}</div>}
                       <div>Speed: {b.speed ?? 0}</div>
-                      <div>
-                        Last:{" "}
+                      <div style={{ fontSize: 12, opacity: 0.8 }}>
                         {b.timestamp ? new Date(b.timestamp).toLocaleString() : "N/A"}
                       </div>
                       <div style={{ marginTop: 8 }}>
-                        <Link to={`/bus/${encodeURIComponent(b.busId)}`}>
-                          Open details →
-                        </Link>
+                        <Link to={`/bus/${encodeURIComponent(b.busId)}`}>Open details →</Link>
                       </div>
                     </div>
                   </Popup>
-                </Marker>
+                </BusMarker>
               ))}
             </MapContainer>
           </div>
         </section>
 
-        {/* Right panel */}
+        {/* RIGHT PANEL */}
         <section className="card right-panel">
           <div className="card-h">
             <div className="h">Live Buses</div>
-            <div className="muted">Click bus to view</div>
+            <div className="muted">Auto-refresh every 5 seconds</div>
           </div>
+
           <div className="card-b">
+            <input
+              className="input"
+              placeholder="Search bus ID (e.g. BUS-101)"
+              value={busQuery}
+              onChange={(e) => setBusQuery(e.target.value)}
+              style={{ marginBottom: 10 }}
+            />
+
+            {/* Show skeleton ONLY for first load */}
             <div className="list">
-              {visibleBuses.slice(0, 12).map((b) => (
-                <div
-                  key={b.busId}
-                  className="item"
-                  style={{
-                    borderColor: b.busId === selectedBusId ? "#0b4ea2" : undefined
-                  }}
-                  onClick={() => setSelectedBusId(b.busId)}>
-                  <div>
-                    <b>{b.busId}</b>
-                    <div className="kv">Speed: {b.speed ?? 0}</div>
-                    <div className="kv">
-                      Last: {b.timestamp ? new Date(b.timestamp).toLocaleTimeString() : "N/A"}
+              {busesFirstLoad ? (
+                <>
+                  <div className="skel-card">
+                    <div className="skel skel-line md"></div>
+                    <div className="skel skel-line lg"></div>
+                    <div className="skel skel-line sm"></div>
+                  </div>
+                  <div className="skel-card">
+                    <div className="skel skel-line md"></div>
+                    <div className="skel skel-line lg"></div>
+                    <div className="skel skel-line sm"></div>
+                  </div>
+                  <div className="skel-card">
+                    <div className="skel skel-line md"></div>
+                    <div className="skel skel-line lg"></div>
+                    <div className="skel skel-line sm"></div>
+                  </div>
+
+                  {busesError && (
+                    <div style={{ marginTop: 10, color: "#b91c1c", fontSize: 12 }}>
+                      Buses error: {busesError}
                     </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <Link to={`/bus/${encodeURIComponent(b.busId)}`}>Open →</Link>
-                  </div>
-                </div>
-              ))}
+                  )}
+                </>
+              ) : (
+                <>
+                  {busesError && (
+                    <div style={{ marginBottom: 10, color: "#b91c1c", fontSize: 12 }}>
+                      Buses error: {busesError}
+                    </div>
+                  )}
 
-              {visibleBuses.length === 0 && (
-                <div className="muted">
-                 Auto-refresh every 5 seconds
-                </div>
+                  {filteredBuses.slice(0, 12).map((b) => (
+                    <div
+                      key={b.busId}
+                      className="item"
+                      style={{
+                        cursor: "pointer",
+                        borderColor:
+                          b.busId === selectedBusId ? "rgba(11,78,162,0.65)" : undefined,
+                      }}
+                      onClick={() => focusBus(b)}
+                    >
+                      <div>
+                        <b>{b.busId}</b>
+                        <div className="kv">Speed: {b.speed ?? 0}</div>
+                        <div className="kv">
+                          Last updated at{" "}
+                          {b.timestamp ? new Date(b.timestamp).toLocaleTimeString() : "N/A"}
+                        </div>
+                      </div>
 
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <Link
+                          to={`/bus/${encodeURIComponent(b.busId)}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Open →
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+
+                  {filteredBuses.length === 0 && (
+                    <div className="muted">
+                      No live buses found{busQuery ? " for this search." : " yet."}
+                      <br />
+                      {busQuery
+                        ? "Try a different bus ID."
+                        : "Send GPS updates to see buses on map."}
+                    </div>
+                  )}
+                </>
               )}
-
             </div>
           </div>
         </section>
-      </main>
+      </motion.main>
     </div>
   );
 }

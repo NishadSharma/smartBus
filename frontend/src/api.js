@@ -5,6 +5,15 @@ async function handle(res, label) {
   return res.json();
 }
 
+export async function getBusEta(busId) {
+  const res = await fetch(`/api/bus/${encodeURIComponent(busId)}/eta`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to fetch ETA");
+  }
+  return res.json();
+}
+
 export function getLiveBuses() {
   return fetch(`${API_BASE}/api/buses/live`).then((r) => handle(r, "buses/live"));
 }
@@ -21,6 +30,6 @@ export function getBusLatest(busId) {
   return fetch(`${API_BASE}/api/bus/${busId}/latest`).then((r) => handle(r, "bus/latest"));
 }
 
-export function getBusEta(busId) {
-  return fetch(`${API_BASE}/api/bus/${busId}/eta`).then((r) => handle(r, "bus/eta"));
-}
+// export function getBusEta(busId) {
+//   return fetch(`${API_BASE}/api/bus/${busId}/eta`).then((r) => handle(r, "bus/eta"));
+// }
