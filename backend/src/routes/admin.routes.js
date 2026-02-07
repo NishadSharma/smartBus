@@ -3,6 +3,9 @@ const router = express.Router();
 
 const Route = require("../models/Route");
 const Stop = require("../models/Stop");
+const { requireAuth, requireRole } = require("../middleware/auth");
+
+router.use(requireAuth, requireRole("admin"));
 
 // POST /api/admin/routes
 router.post("/admin/routes", async (req, res) => {
