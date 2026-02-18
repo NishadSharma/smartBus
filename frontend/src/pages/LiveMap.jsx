@@ -9,7 +9,8 @@ import L from "leaflet";
 import GovHeader from "../components/GovHeader";
 import AlertsBar from "../components/AlertsBar";
 import BusMarker from "../components/BusMarker";
-import { getLiveBuses, getRoutes, getStops } from "../api";
+import { getLiveBuses, getRoutes, getStops, API_BASE } from "../api";
+import { io as ioClient } from "socket.io-client";
 
 // Fix Leaflet marker icons (for stops)
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -29,8 +30,16 @@ function normalizeList(payload) {
   return [];
 }
 
+function isNum(n) {
+  return typeof n === "number" && Number.isFinite(n);
+}
+
+function hasLatLng(obj) {
+  return obj && isNum(obj.lat) && isNum(obj.lng);
+}
+
 export default function LiveMap() {
-  const { t } = useTranslation(); // (can use later; safe)
+  const { t } = useTranslation(); // safe even if unused
   const { theme, toggleTheme } = useTheme();
 
   const [busQuery, setBusQuery] = useState("");
@@ -53,44 +62,96 @@ export default function LiveMap() {
   const [busesFirstLoad, setBusesFirstLoad] = useState(true);
   const [busesSyncing, setBusesSyncing] = useState(false);
 
+  // Socket state
+  const [socketConnected, setSocketConnected] = useState(false);
+
   const mapRef = useRef(null);
   const busMarkerRefs = useRef({});
 
-  // ---------------------------
-  // Derived: route polyline
-  // ---------------------------
+  // ✅ Clean stops (prevents CircleMarker crash)
+  const safeStops = useMemo(() => stops.filter(hasLatLng), [stops]);
+
+  // ✅ Route polyline from safe stops (sorted)
   const routeLine = useMemo(() => {
-    if (!stops || stops.length < 2) return [];
-    const sorted = [...stops].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
-    return sorted
-      .filter((s) => typeof s.lat === "number" && typeof s.lng === "number")
-      .map((s) => [s.lat, s.lng]);
-  }, [stops]);
+    if (!safeStops || safeStops.length < 2) return [];
+    const sorted = [...safeStops].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+    return sorted.map((s) => [s.lat, s.lng]);
+  }, [safeStops]);
 
-  // Derived: visible buses by route
+  // ✅ Clean buses (prevents BusMarker crash)
+  const safeBuses = useMemo(() => buses.filter(hasLatLng), [buses]);
+
+  // ✅ Visible buses by routeId (only if routeId exists in payload)
   const visibleBuses = useMemo(() => {
-    if (!selectedRouteId) return buses;
-    const anyRouteIdPresent = buses.some((b) => b.routeId);
-    if (!anyRouteIdPresent) return buses;
-    return buses.filter((b) => b.routeId === selectedRouteId);
-  }, [buses, selectedRouteId]);
+    if (!selectedRouteId) return safeBuses;
+    const anyRouteIdPresent = safeBuses.some((b) => b.routeId);
+    if (!anyRouteIdPresent) return safeBuses;
+    return safeBuses.filter((b) => b.routeId === selectedRouteId);
+  }, [safeBuses, selectedRouteId]);
 
-  // Derived: search filter
+  // ✅ Search filter
   const filteredBuses = useMemo(() => {
     const q = busQuery.trim().toLowerCase();
     if (!q) return visibleBuses;
     return visibleBuses.filter((b) => String(b.busId || "").toLowerCase().includes(q));
   }, [visibleBuses, busQuery]);
 
-  // Map center
+  // ✅ Safer map center (first valid stop, else default)
   const mapCenter = useMemo(() => {
-    if (stops.length > 0) return [stops[0].lat, stops[0].lng];
-    return [30.7333, 76.7794];
-  }, [stops]);
+    if (safeStops.length > 0) return [safeStops[0].lat, safeStops[0].lng];
+    return [30.7333, 76.7794]; // Chandigarh fallback
+  }, [safeStops]);
 
   // Header status
   const backendOk =
     !routesError && !stopsError && !busesError && !String(status).toLowerCase().includes("unreachable");
+
+  // ---------------------------
+  // Socket.IO: connect & listen
+  // ---------------------------
+  useEffect(() => {
+    let socket;
+
+    try {
+      socket = ioClient(API_BASE, {
+        path: "/socket.io",
+        transports: ["websocket"],
+        reconnectionAttempts: 5,
+      });
+    } catch (e) {
+      console.warn("Socket.IO client failed to initialize", e);
+      return;
+    }
+
+    socket.on("connect", () => {
+      setSocketConnected(true);
+    });
+
+    socket.on("disconnect", () => {
+      setSocketConnected(false);
+    });
+
+    socket.on("bus:update", (bus) => {
+      setBuses((prev) => {
+        const map = new Map(prev.map((b) => [b.busId, b]));
+        map.set(bus.busId, bus);
+        return Array.from(map.values());
+      });
+      setStatus(`Live: ${new Date().toLocaleTimeString()}`);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.warn("Socket connect error:", err);
+    });
+
+    return () => {
+      try {
+        socket.close();
+      } catch {}
+    };
+    // Note: API_BASE is stable; leaving empty deps is fine for a single connect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---------------------------
   // Load routes once
@@ -163,10 +224,13 @@ export default function LiveMap() {
   }, [selectedRouteId]);
 
   // ---------------------------
-  // Poll buses every 5 seconds
+  // Poll buses every 5 seconds (fallback when socket not connected)
   // ---------------------------
   useEffect(() => {
     let cancelled = false;
+
+    // If socket is connected, skip polling
+    if (socketConnected) return;
 
     async function loadOnceOrPoll() {
       try {
@@ -198,10 +262,10 @@ export default function LiveMap() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [busesFirstLoad]);
+  }, [busesFirstLoad, socketConnected]);
 
   // ---------------------------
-  // Fit map to route bounds (AFTER routeLine exists)
+  // Fit map to route bounds
   // ---------------------------
   useEffect(() => {
     if (!mapRef.current) return;
@@ -216,7 +280,7 @@ export default function LiveMap() {
   }, [routeLine]);
 
   // ---------------------------
-  // Alerts (dynamic)
+  // Alerts
   // ---------------------------
   const alerts = useMemo(() => {
     const list = [];
@@ -237,6 +301,7 @@ export default function LiveMap() {
 
     if (routesError) list.push({ type: "danger", title: "Routes", message: routesError });
     if (stopsError) list.push({ type: "warn", title: "Stops", message: stopsError });
+
     if (!busesFirstLoad && !busesError && visibleBuses.length === 0) {
       list.push({
         type: "warn",
@@ -248,9 +313,9 @@ export default function LiveMap() {
     return list;
   }, [backendOk, routesError, stopsError, busesError, busesFirstLoad, visibleBuses.length]);
 
-  // Focus animation
+  // Focus
   function focusBus(bus) {
-    if (!bus || bus.lat == null || bus.lng == null) return;
+    if (!bus || !hasLatLng(bus)) return;
     setSelectedBusId(bus.busId);
 
     if (mapRef.current) {
@@ -272,7 +337,9 @@ export default function LiveMap() {
         themeLabel={theme === "dark" ? "night" : "day"}
       />
 
-      <div className="gov-banner">ℹ️ This system displays live bus location data for public information purposes.</div>
+      <div className="gov-banner">
+        ℹ️ This system displays live bus location data for public information purposes.
+      </div>
 
       <AlertsBar alerts={alerts} />
 
@@ -321,7 +388,7 @@ export default function LiveMap() {
             <div className="divider" />
 
             <div className="muted">
-              Stops: <b>{stops.length}</b> · Buses: <b>{visibleBuses.length}</b>
+              Stops: <b>{safeStops.length}</b> · Buses: <b>{visibleBuses.length}</b>
               {busesSyncing ? <span style={{ marginLeft: 8 }}>· Syncing…</span> : null}
             </div>
 
@@ -372,7 +439,7 @@ export default function LiveMap() {
               )}
 
               {/* Stops */}
-              {stops.map((s) => (
+              {safeStops.map((s) => (
                 <CircleMarker key={s.stopId} center={[s.lat, s.lng]} radius={6}>
                   <Popup>
                     <div>
@@ -430,6 +497,13 @@ export default function LiveMap() {
               style={{ marginBottom: 10 }}
             />
 
+            {/* ✅ show error always */}
+            {busesError && (
+              <div style={{ marginBottom: 10, color: "#b91c1c", fontSize: 12 }}>
+                Buses error: {busesError}
+              </div>
+            )}
+
             <div className="list">
               {busesFirstLoad ? (
                 <>
@@ -468,8 +542,12 @@ export default function LiveMap() {
                           Last: {b.timestamp ? new Date(b.timestamp).toLocaleTimeString() : "N/A"}
                         </div>
                       </div>
+
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <Link to={`/bus/${encodeURIComponent(b.busId)}`} onClick={(e) => e.stopPropagation()}>
+                        <Link
+                          to={`/bus/${encodeURIComponent(b.busId)}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           Open →
                         </Link>
                       </div>
@@ -480,7 +558,9 @@ export default function LiveMap() {
                     <div className="muted">
                       No live buses found{busQuery ? " for this search." : " yet."}
                       <br />
-                      {busQuery ? "Try a different bus ID." : "Send GPS updates to see buses on map."}
+                      {busQuery
+                        ? "Try a different bus ID."
+                        : "Send GPS updates to see buses on map."}
                     </div>
                   )}
                 </>

@@ -3,6 +3,8 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const connectDB = require("./db");
 
@@ -33,7 +35,7 @@ app.get("/api/health", (req, res) => {
    API Routes
    ======================= */
 app.use("/api", gpsRoutes);     // POST /api/gps/update
-app.use("/api", busRoutes);     // GET /api/buses/live, etc (whatever you defined there)
+app.use("/api", busRoutes);     // GET /api/buses/live, etc
 app.use("/api", routesRoutes);  // GET /api/routes, GET /api/routes/:routeId/stops
 app.use("/api", adminRoutes);   // POST /api/admin/routes, POST /api/admin/stops
 app.use("/api", etaRoutes);     // GET /api/bus/:busId/eta
@@ -46,8 +48,28 @@ const PORT = process.env.PORT || 3000;
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`✅ Server running on http://localhost:${PORT}`);
+    // create http server and attach socket.io
+    const server = http.createServer(app);
+    const io = new Server(server, {
+      cors: {
+        origin: process.env.CLIENT_ORIGIN || "*",
+        methods: ["GET", "POST"],
+      },
+    });
+
+    // attach io for controllers to use
+    app.locals.io = io;
+
+    io.on("connection", (socket) => {
+      console.log("🔌 Socket connected:", socket.id);
+
+      socket.on("disconnect", (reason) => {
+        console.log("🔌 Socket disconnected:", socket.id, reason);
+      });
+    });
+
+    server.listen(PORT, () => {
+      console.log(`✅ Server + Socket.IO running on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {

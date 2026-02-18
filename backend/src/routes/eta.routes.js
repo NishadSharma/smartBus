@@ -18,23 +18,50 @@ router.get("/bus/:busId/eta", async (req, res) => {
       return res.status(400).json({ error: "routeId not set for this bus yet" });
     }
 
-    const stops = await Stop.find({ routeId }).sort({ sequence: 1 });
+    // ordered stops for the route
+    const stops = await Stop.find({ routeId }).sort({ sequence: 1 }).lean();
     if (!stops.length) {
       return res.status(404).json({ error: "No stops found for this route" });
     }
 
-    // Compute distances
-    const enriched = stops.map((s) => {
-      const distKm = haversineKm(bus.lat, bus.lng, s.lat, s.lng);
-      return { stop: s, distKm };
+    // find nearest stop index by haversine distance
+    let nearestIndex = 0;
+    let nearestDist = Infinity;
+    for (let i = 0; i < stops.length; i++) {
+      const s = stops[i];
+      const d = haversineKm(bus.lat, bus.lng, s.lat, s.lng);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestIndex = i;
+      }
+    }
+
+    // Build next stops in sequence order starting from nearestIndex (including it)
+    const nextCount = 5;
+    const candidates = [];
+    // distance from bus to nearest stop is nearestDist
+    let cumulativeKm = nearestDist;
+    candidates.push({
+      stop: stops[nearestIndex],
+      distKm: Number(cumulativeKm.toFixed(3)),
     });
 
-    // Choose next 3 nearest stops (ETA v1)
-    enriched.sort((a, b) => a.distKm - b.distKm);
-    const next = enriched.slice(0, 3);
+    // accumulate distances along sequence
+    for (let j = nearestIndex + 1; j < stops.length && candidates.length < nextCount; j++) {
+      const prev = stops[j - 1];
+      const cur = stops[j];
+      const segKm = haversineKm(prev.lat, prev.lng, cur.lat, cur.lng);
+      cumulativeKm += segKm;
+      candidates.push({
+        stop: cur,
+        distKm: Number(cumulativeKm.toFixed(3)),
+      });
+    }
 
-    const speedKmh = Math.max(Number(bus.speed || 0), 12); // fallback 12 km/h
-    const nextStops = next.map(({ stop, distKm }) => ({
+    // speed fallback
+    const speedKmh = Math.max(Number(bus.speed || 0), 12);
+
+    const nextStops = candidates.map(({ stop, distKm }) => ({
       stopId: stop.stopId,
       routeId: stop.routeId,
       name_en: stop.name_en,
