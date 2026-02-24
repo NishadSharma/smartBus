@@ -200,7 +200,7 @@ Live bus data and ETA calculations are simulated and meant for demonstration pur
 
 Nishad,
 Tryambakam Dev Sharma,
-Hari harans,
+Hari Haran S,
 Swastik Sharma,
 Sashi Kant
 
@@ -208,7 +208,7 @@ Sashi Kant
 
 📍 India
 
-🔗 GitHub: https://github.com/NishadSharma
+🔗 GitHub: https://github.com/NishadSharma/smartBus
 
 
 Support
