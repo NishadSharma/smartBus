@@ -9,6 +9,7 @@ import UnifiedDashboard from "./pages/UnifiedDashboard";
 import { AuthProvider } from "./contexts/AuthContext";
 import PublicRoute from "./components/PublicRoute";
 import MainLayout from "./components/MainLayout";
+import Timetable from "./pages/Timetable";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           {/* Public Shielded Arrays */}
           <Route path="/" element={<Navigate to="/welcome" replace />} />
           <Route path="/welcome" element={<Welcome />} />
+          <Route path="/timetable" element={<Timetable />} />
           <Route path="/login" element={<PublicRoute restricted={true}><Login /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute restricted={true}><Register /></PublicRoute>} />
 
