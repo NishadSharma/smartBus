@@ -16,9 +16,9 @@ async function seed() {
   const hComm = await bcrypt.hash("pass", 10);
 
   const users = [
-    { username: "admin", role: "admin", passwordHash: hAdmin, busId: "" },
-    { username: "bus101", role: "operator", passwordHash: hOper, busId: "BUS-101" },
-    { username: "user", role: "commuter", passwordHash: hComm, busId: "" }
+    { username: "admin", role: "admin", email: "admin@example.com", passwordHash: hAdmin, busId: "" },
+    { username: "bus101", role: "operator", email: "bus101@example.com", passwordHash: hOper, busId: "BUS-101" },
+    { username: "passenger", role: "commuter", email: "passenger@example.com", passwordHash: hComm, busId: "" }
   ];
 
   await User.insertMany(users);

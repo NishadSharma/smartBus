@@ -43,7 +43,7 @@ export function enableMockBackend() {
         users: [
           { _id: "u1", username: "admin", role: "admin" },
           { _id: "u2", username: "bus101", role: "operator" },
-          { _id: "u3", username: "user", role: "commuter" }
+          { _id: "u3", username: "passenger", role: "commuter" }
         ], 
         total: 3, page: 1, pages: 1 
       });
