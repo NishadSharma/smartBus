@@ -1,219 +1,129 @@
-## smartBus — Real-Time Public Transport Tracking Platform
+# 🚌 smartBus
 
-smartBus is a modern, responsive, real-time public transport tracking platform designed to visualize live bus locations, routes, stops, and estimated arrival times (ETA).
-Built with a government-grade UI, role-based access, and scalable architecture, it simulates how real-world intelligent transport systems operate today.
+> Real-Time Public Transport Tracking & Transit Intelligence Platform
 
-## Live Features Overview
+[![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Leaflet](https://img.shields.io/badge/Leaflet-199903?style=flat-square&logo=leaflet&logoColor=white)](https://leafletjs.com/)
 
- Passenger (Public) View
+smartBus is a capstone project focused on improving urban public transportation through real-time transit monitoring, route visualization, and ETA prediction. The platform is designed with a modern government-grade interface to provide commuters with an efficient and intuitive transit experience.
 
-Live bus tracking on interactive maps (Leaflet + OpenStreetMap)
+---
 
-Route-based filtering of buses and stops
+## ✨ Features
 
-Real-time bus list with auto-refresh
+- 📍 Real-time bus tracking with interactive maps
+- ⏱ ETA prediction and route visualization
+- 🌓 Adaptive Light/Dark theme
+- ⚡ Smooth UI animations and transitions
+- 📱 Fully responsive mobile-first design
+- 🔐 Role-based dashboards *(In Development)*
 
-Animated bus markers with smooth motion
+---
 
-ETA timeline (when backend available)
+## 📸 Preview
 
-Public notices & service alerts
+| Dashboard | ETA Prediction |
+|---|---|
+| ![](screenshots/dashboard.png) | ![](screenshots/etaPrediction.png) |
 
-Fully responsive (desktop, tablet, mobile)
+| Landing Page | Login |
+|---|---|
+| ![](screenshots/welcomePage.png) | ![](screenshots/loginPage.png) |
 
+---
 
-## Role-Based Access (UI-ready)
+## 🛠 Tech Stack
 
-Passenger (Public)
+### Frontend
+- React.js + Vite
+- Leaflet.js
+- OpenStreetMap
+- Framer Motion
+- CSS3
 
-Driver (Planned)
+### Backend *(Under Development)*
+- Node.js
+- Express.js
+- MongoDB
+- JWT Authentication
 
-Admin (Planned)
+---
 
-Secure login UI (backend integration planned)
+## 🚀 Getting Started
 
+### Prerequisites
 
-## UI & UX Highlights
+- Node.js (Latest LTS)
+- npm or yarn
 
-Government-style premium interface
+### Installation
 
-Light / Dark mode toggle
-
-Skeleton loaders for smooth loading UX
-
-Animated transitions (Framer Motion)
-
-Accessible typography (Inter / system fonts)
-
-Mobile-first responsive design
-
-## UI / UX Design
-
-The UI/UX design for the **smartBus** platform was created using **Figma**.  
-The design focuses on a clean and intuitive layout with a clear visual hierarchy, easy navigation, and responsive behavior to ensure a smooth user experience across devices.
-
-It includes well-structured screens, consistent UI components, and clearly defined user flows. This design serves as a visual reference for development and supports future enhancements of the platform.
-
-## 🔗 Figma Design Link:
-https://www.figma.com/design/HBes82ZYORR1es0prPHoLd/punbus-website-design?node-id=0-1&t=Xs8OiWMqBlkxNjxR-1
-
-
-<h2>📸 Screenshots</h2>
-
-<p align="center">
-  <img src="screenshots/welcomePage.png" width="45%" />
-  <img src="screenshots/dashboard.png" width="45%" />
-</p>
-
-<p align="center">
-  <img src="screenshots/loginPage.png" width="45%" />
-  <img src="screenshots/etaPrediction.png" width="45%" />
-</p>
-
-
-
-## Tech Stack
-
-
-## Frontend
-
-React + Vite
-
-React Router
-
-Leaflet.js (Maps)
-
-Framer Motion (Animations)
-
-Modern CSS (Grid, Flexbox, Variables)
-
-Responsive & Mobile-First Design
-
-
-
-## Backend (In Progress / Partial)
-
-Node.js
-
-Express
-
-MongoDB
-
-JWT Authentication
-
-Role-based Authorization
-
-
-## Architecture Overview
-
-Frontend (React)
- 
- ├── Live Map Dashboard
- 
- ├── Bus Details + ETA
- 
- ├── Login (Role-based)
- 
- ├── Alerts & Notices
- 
- └── Dark Mode / UX Enhancements
-
-
-## Backend (Node + Express)
-
- ├── Live Bus GPS API
- 
- ├── Routes & Stops API
- 
- ├── ETA Calculation Engine
- 
- └── Auth & Roles (Planned)
-
-
-## Local Setup
-
-
-1️⃣ Clone the Repository
-
-git clone https://github.com/your-username/smartBus.git
-
+```bash
+git clone https://github.com/NishadSharma/smartBus.git
 cd smartBus
-
-
-2️⃣ Install Dependencies
-
 npm install
-
-
-3️⃣ Start Frontend
-
 npm run dev
+```
 
+### Run Locally
 
-Frontend will run at:
-
+```bash
 http://localhost:5173
+```
 
+---
 
-## Current Status
+## 📂 Project Structure
 
-Feature	Status
+```bash
+smartBus/
+├── public/
+├── screenshots/
+├── src/
+├── package.json
+└── README.md
+```
 
-Live Map	✅ Implemented
+---
 
-Animated Bus Markers	✅ Implemented
+## 📌 Project Status
 
-Skeleton Loaders	✅ Implemented
+| Module | Status |
+|---|---|
+| Live Transit Dashboard | ✅ Completed |
+| Animated Bus Tracking | ✅ Completed |
+| ETA Prediction UI | ✅ Completed |
+| Backend Integration | 🚧 In Progress |
+| Admin Dashboard | ⏳ Planned |
+| Driver GPS Integration | ⏳ Planned |
 
-ETA UI	⚠️ Backend pending
+---
 
-Login UI	✅ Implemented
+## 📑 Research & Innovation
 
-Role-based Auth	⏳ Planned
+- 📄 Research paper prepared *(currently under review / not yet accepted)*
+- 🏛 Patent filed and approved at university level
 
-Admin Dashboard	⏳ Planned
+---
 
+## 🔗 Project Links
 
-## Future Enhancements
+- [Figma Design](https://www.figma.com/design/HBes82ZYORR1es0prPHoLd/punbus-website-design?node-id=0-1&t=Xs8OiWMqBlkxNjxR-1)
+- [Issue Tracker](https://github.com/NishadSharma/smartBus/issues)
 
-Real ETA engine with traffic-aware calculations
-
-Admin dashboard for route & bus management
-
-Driver mobile interface for GPS updates
-
-Push notifications for delays & alerts
-
-Analytics dashboard (ridership, punctuality)
-
-Progressive Web App (PWA) support
-
-
-## ⚠️ Disclaimer
-
-This platform is developed as an academic / capstone project.
-
-Live bus data and ETA calculations are simulated and meant for demonstration purposes only.
-
+---
 
 ## 👨‍💻 Author
 
-Nishad
+**Nishad**  
+Scool of Computer Science & Engineering
+Lovely Professional University, Phagwara
+Punjab, India
 
-🎓 Computer Science and Engineering
+---
 
-📍 India
+## ⚠️ Disclaimer
 
-🔗 GitHub: https://github.com/NishadSharma/smartBus
-
-
-Support
-
-If you like this project:
-
-⭐ Star the repository
-
-🍴 Fork it
-
-🧠 Suggest improvements via issues
-
+This project is developed as an academic capstone project.  
+All transit movement data and ETA information currently displayed are simulated for demonstration and research purposes only.
