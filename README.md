@@ -61,8 +61,8 @@ https://www.figma.com/design/HBes82ZYORR1es0prPHoLd/punbus-website-design?node-i
 <h2>📸 Screenshots</h2>
 
 <p align="center">
+  <img src="screenshots/welcomePage.png" width="45%" />
   <img src="screenshots/dashboard.png" width="45%" />
-  <img src="screenshots/dashboardDark.png" width="45%" />
 </p>
 
 <p align="center">
