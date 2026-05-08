@@ -117,9 +117,9 @@ smartBus/
 ## 👨‍💻 Author
 
 **Nishad**  
-Scool of Computer Science & Engineering
-Lovely Professional University, Phagwara
-Punjab, India
+- Scool of Computer Science & Engineering
+- Lovely Professional University, Phagwara
+- Punjab, India
 
 ---
 
