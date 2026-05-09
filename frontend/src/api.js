@@ -42,6 +42,22 @@ export function getLiveBuses() {
   return apiFetch(`/api/buses/live`, { headers: authHeaders() });
 }
 
+export async function sendOtp(mobile) {
+  return apiFetch(`/api/auth/send-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mobile })
+  });
+}
+
+export async function verifyOtp(mobile, otp) {
+  return apiFetch(`/api/auth/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mobile, otp })
+  });
+}
+
 export function getRoutes() {
   return apiFetch(`/api/routes`, { headers: authHeaders() });
 }

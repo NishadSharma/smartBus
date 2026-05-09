@@ -40,6 +40,16 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const loginWithOtp = async (mobile, otp) => {
+    const data = await apiFetch(`/api/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile, otp })
+    });
+    setUser(data.user);
+    return data.user;
+  };
+
   const register = async (name, email, mobile, state, district, password) => {
     const data = await apiFetch(`/api/auth/register`, {
       method: "POST",
@@ -59,7 +69,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithOtp, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

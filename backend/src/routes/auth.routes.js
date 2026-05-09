@@ -6,6 +6,92 @@ const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
+// In-memory OTP store (mobile -> { otp, expires })
+const otps = new Map();
+
+// POST /api/auth/send-otp
+router.post("/auth/send-otp", async (req, res) => {
+  try {
+    const { mobile } = req.body || {};
+    if (!mobile) return res.status(400).json({ ok: false, error: "Mobile number is required" });
+
+    // Hardcoded demo OTP as requested
+    const demoOtp = "123456";
+    
+    otps.set(mobile, {
+      otp: demoOtp,
+      expires: Date.now() + 5 * 60 * 1000 // 5 mins expiry
+    });
+
+    console.log(`[Demo] OTP for ${mobile} is ${demoOtp}`);
+
+    return res.json({ ok: true, message: "OTP sent successfully" });
+  } catch (err) {
+    console.error("Send OTP error:", err);
+    return res.status(500).json({ ok: false, error: "Internal server error" });
+  }
+});
+
+// POST /api/auth/verify-otp
+router.post("/auth/verify-otp", async (req, res) => {
+  try {
+    const { mobile, otp } = req.body || {};
+    if (!mobile || !otp) return res.status(400).json({ ok: false, error: "Mobile and OTP required" });
+
+    const record = otps.get(mobile);
+    if (!record) return res.status(400).json({ ok: false, error: "No OTP found or expired" });
+    if (Date.now() > record.expires) {
+      otps.delete(mobile);
+      return res.status(400).json({ ok: false, error: "OTP expired" });
+    }
+    if (record.otp !== String(otp)) {
+      return res.status(400).json({ ok: false, error: "Invalid OTP" });
+    }
+
+    // OTP verified, remove it
+    otps.delete(mobile);
+
+    let user = await User.findOne({ mobile });
+
+    if (!user) {
+      // Auto-create user
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toLowerCase();
+      const generatedUsername = `user_${mobile.substring(0, 4)}_${randomSuffix}`;
+      
+      const passwordHash = await bcrypt.hash(Math.random().toString(36), 10);
+      
+      user = await User.create({
+        username: generatedUsername,
+        mobile: mobile,
+        passwordHash,
+        role: "commuter"
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, username: user.username, role: user.role, busId: user.busId || "" },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    return res.json({
+      ok: true,
+      user: { id: user._id, username: user.username, role: user.role, busId: user.busId || "" },
+    });
+
+  } catch (err) {
+    console.error("Verify OTP error:", err);
+    return res.status(500).json({ ok: false, error: "Internal server error" });
+  }
+});
+
 // POST /api/auth/register
 router.post("/auth/register", async (req, res) => {
   try {

@@ -5,6 +5,7 @@ import GovHeader from "../components/GovHeader";
 import { useAuth } from "../contexts/AuthContext";
 import useTheme from "../hooks/useTheme";
 import { useTranslation } from "react-i18next";
+import { sendOtp } from "../api";
 
 export default function Login() {
   const nav = useNavigate();
@@ -12,11 +13,17 @@ export default function Login() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
   
-  const { login } = useAuth();
+  const { login, loginWithOtp } = useAuth();
   const [identity, setIdentity] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // OTP States
+  const [authMode, setAuthMode] = useState("otp"); // 'password' or 'otp'
+  const [otpStep, setOtpStep] = useState(1); // 1 = enter mobile, 2 = enter otp
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [otpCode, setOtpCode] = useState("");
 
   useEffect(() => {
     const q = new URLSearchParams(loc.search);
@@ -47,7 +54,47 @@ export default function Login() {
     }
   }
 
-  const canSubmit = identity.trim() && password;
+  async function onSendOtp(e) {
+    if (e) e.preventDefault();
+    if (!mobileNumber.trim()) return;
+    setError("");
+    setLoading(true);
+
+    try {
+      await sendOtp(mobileNumber.trim());
+      setOtpStep(2);
+    } catch (e) {
+      setError(String(e?.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onVerifyOtp(e) {
+    if (e) e.preventDefault();
+    if (!otpCode.trim()) return;
+    setError("");
+    setLoading(true);
+
+    try {
+      const activeUser = await loginWithOtp(mobileNumber.trim(), otpCode.trim());
+      if (activeUser?.role === "admin") {
+        nav("/admin");
+      } else if (activeUser?.role === "operator") {
+        nav("/operator");
+      } else {
+        nav("/dashboard");
+      }
+    } catch (e) {
+      setError(String(e?.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const canSubmitPassword = identity.trim() && password;
+  const canSubmitMobile = mobileNumber.trim().length >= 10;
+  const canSubmitOtp = otpCode.trim().length >= 4;
 
   function loadDemo(i, p) {
     setIdentity(i);
@@ -82,62 +129,156 @@ export default function Login() {
               </h2>
             </div>
 
-            <form onSubmit={onLogin} className="space-y-5">
-              <div>
-                <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2">
-                  {t("auth.emailOrMobile")}
-                </label>
-                <input
-                  className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-sm font-bold placeholder:font-normal placeholder:opacity-70 uppercase tracking-widest shadow-inner shadow-slate-100 dark:shadow-none"
-                  value={identity}
-                  onChange={(e) => setIdentity(e.target.value)}
-                  placeholder="Email or Mobile"
-                  autoComplete="username"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2 mt-4">
-                  {t("auth.password")}
-                </label>
-                <input
-                  className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-sm font-mono tracking-[0.2em] placeholder:tracking-normal placeholder:font-sans shadow-inner shadow-slate-100 dark:shadow-none"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  type="password"
-                  autoComplete="current-password"
-                />
-              </div>
-
-              {error && (
-                <div className="text-rose-600 dark:text-rose-400 text-[11px] font-bold tracking-widest text-center bg-rose-50 dark:bg-rose-900/10 py-3 border border-rose-200 dark:border-rose-900 uppercase">
-                  {error}
-                </div>
-              )}
-
-              <button 
-                className="w-full bg-[#0a3161] hover:bg-[#11468F] dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white font-bold py-4 rounded-md transition-colors mt-4 text-[13px] uppercase tracking-[0.15em] shadow-lg shadow-blue-900/20 dark:shadow-cyan-900/30 border border-transparent disabled:opacity-50 disabled:cursor-not-allowed group flex justify-center items-center gap-2" 
-                type="submit" 
-                disabled={!canSubmit || loading}
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-md mb-6 shadow-inner">
+              <button
+                type="button"
+                onClick={() => { setAuthMode("otp"); setError(""); }}
+                className={`flex-1 py-2 text-[11px] font-black uppercase tracking-widest transition-all rounded-sm ${authMode === "otp" ? "bg-white dark:bg-[#0f141e] text-[#0a3161] dark:text-cyan-400 shadow" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
               >
-                {loading ? t("auth.authenticating") : (
-                  <>
-                    <span>{t("auth.signIn")}</span>
-                    <i className="fa-solid fa-arrow-right text-blue-300 dark:text-white group-hover:translate-x-1 transition-transform mb-[1px]"></i>
-                  </>
-                )}
+                OTP Login
               </button>
-            </form>
+              <button
+                type="button"
+                onClick={() => { setAuthMode("password"); setError(""); }}
+                className={`flex-1 py-2 text-[11px] font-black uppercase tracking-widest transition-all rounded-sm ${authMode === "password" ? "bg-white dark:bg-[#0f141e] text-[#0a3161] dark:text-cyan-400 shadow" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+              >
+                Password
+              </button>
+            </div>
+
+            {authMode === "password" && (
+              <form onSubmit={onLogin} className="space-y-5">
+                <div>
+                  <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2">
+                    {t("auth.emailOrMobile")}
+                  </label>
+                  <input
+                    className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-sm font-bold placeholder:font-normal placeholder:opacity-70 uppercase tracking-widest shadow-inner shadow-slate-100 dark:shadow-none"
+                    value={identity}
+                    onChange={(e) => setIdentity(e.target.value)}
+                    placeholder="Email or Mobile"
+                    autoComplete="username"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2 mt-4">
+                    {t("auth.password")}
+                  </label>
+                  <input
+                    className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-sm font-mono tracking-[0.2em] placeholder:tracking-normal placeholder:font-sans shadow-inner shadow-slate-100 dark:shadow-none"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    type="password"
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                {error && (
+                  <div className="text-rose-600 dark:text-rose-400 text-[11px] font-bold tracking-widest text-center bg-rose-50 dark:bg-rose-900/10 py-3 border border-rose-200 dark:border-rose-900 uppercase">
+                    {error}
+                  </div>
+                )}
+
+                <button 
+                  className="w-full bg-[#0a3161] hover:bg-[#11468F] dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white font-bold py-4 rounded-md transition-colors mt-4 text-[13px] uppercase tracking-[0.15em] shadow-lg shadow-blue-900/20 dark:shadow-cyan-900/30 border border-transparent disabled:opacity-50 disabled:cursor-not-allowed group flex justify-center items-center gap-2" 
+                  type="submit" 
+                  disabled={!canSubmitPassword || loading}
+                >
+                  {loading ? t("auth.authenticating") : (
+                    <>
+                      <span>{t("auth.signIn")}</span>
+                      <i className="fa-solid fa-arrow-right text-blue-300 dark:text-white group-hover:translate-x-1 transition-transform mb-[1px]"></i>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+
+            {authMode === "otp" && (
+              <div className="space-y-5">
+                {otpStep === 1 ? (
+                  <form onSubmit={onSendOtp} className="space-y-5">
+                    <div>
+                      <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2">
+                        Mobile Number
+                      </label>
+                      <input
+                        className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-sm font-bold tracking-widest shadow-inner shadow-slate-100 dark:shadow-none"
+                        value={mobileNumber}
+                        onChange={(e) => setMobileNumber(e.target.value)}
+                        placeholder="10-digit mobile number"
+                        type="tel"
+                        autoComplete="tel"
+                      />
+                    </div>
+                    {error && (
+                      <div className="text-rose-600 dark:text-rose-400 text-[11px] font-bold tracking-widest text-center bg-rose-50 dark:bg-rose-900/10 py-3 border border-rose-200 dark:border-rose-900 uppercase">
+                        {error}
+                      </div>
+                    )}
+                    <button 
+                      className="w-full bg-[#0a3161] hover:bg-[#11468F] dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white font-bold py-4 rounded-md transition-colors mt-4 text-[13px] uppercase tracking-[0.15em] shadow-lg shadow-blue-900/20 dark:shadow-cyan-900/30 border border-transparent disabled:opacity-50 disabled:cursor-not-allowed" 
+                      type="submit" 
+                      disabled={!canSubmitMobile || loading}
+                    >
+                      {loading ? "Sending..." : "Send OTP"}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={onVerifyOtp} className="space-y-5">
+                    <div className="text-center mb-4">
+                      <div className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                        OTP sent to +91 {mobileNumber}
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => { setOtpStep(1); setError(""); }}
+                        className="text-[10px] font-black uppercase text-[#0a3161] dark:text-cyan-400 hover:underline mt-1"
+                      >
+                        Change Number
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2">
+                        Enter OTP (Demo: 123456)
+                      </label>
+                      <input
+                        className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-center text-xl font-mono tracking-[0.5em] shadow-inner shadow-slate-100 dark:shadow-none"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        placeholder="••••••"
+                        type="text"
+                        maxLength={6}
+                        autoComplete="one-time-code"
+                      />
+                    </div>
+                    {error && (
+                      <div className="text-rose-600 dark:text-rose-400 text-[11px] font-bold tracking-widest text-center bg-rose-50 dark:bg-rose-900/10 py-3 border border-rose-200 dark:border-rose-900 uppercase">
+                        {error}
+                      </div>
+                    )}
+                    <button 
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-md transition-colors mt-4 text-[13px] uppercase tracking-[0.15em] shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed group flex justify-center items-center gap-2" 
+                      type="submit" 
+                      disabled={!canSubmitOtp || loading}
+                    >
+                      {loading ? "Verifying..." : "Verify & Login"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
 
             <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
               <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center mb-3">
                 {t("auth.demoAccounts")}
               </div>
               <div className="flex gap-3 justify-center">
-                <button onClick={() => loadDemo("admin", "pass")} type="button" className="text-[10px] uppercase font-bold tracking-widest px-5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700">admin</button>
-                <button onClick={() => loadDemo("bus101", "pass")} type="button" className="text-[10px] uppercase font-bold tracking-widest px-5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700">bus101</button>
-                <button onClick={() => loadDemo("passenger", "pass")} type="button" className="text-[10px] uppercase font-bold tracking-widest px-5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700">passenger</button>
+                <button onClick={() => { setAuthMode("password"); loadDemo("admin", "pass"); }} type="button" className="text-[10px] uppercase font-bold tracking-widest px-5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700">admin</button>
+                <button onClick={() => { setAuthMode("password"); loadDemo("bus101", "pass"); }} type="button" className="text-[10px] uppercase font-bold tracking-widest px-5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700">bus101</button>
+                <button onClick={() => { setAuthMode("password"); loadDemo("passenger", "pass"); }} type="button" className="text-[10px] uppercase font-bold tracking-widest px-5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700">passenger</button>
               </div>
             </div>
           </div>
