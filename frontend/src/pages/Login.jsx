@@ -4,11 +4,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import GovHeader from "../components/GovHeader";
 import { useAuth } from "../contexts/AuthContext";
 import useTheme from "../hooks/useTheme";
+import { useTranslation } from "react-i18next";
 
 export default function Login() {
   const nav = useNavigate();
   const loc = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   
   const { login } = useAuth();
   const [identity, setIdentity] = useState("");
@@ -55,7 +57,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0a0d14] font-sans transition-colors duration-300">
       <GovHeader
-        lastSyncText="System Login"
+        lastSyncText={t("auth.systemLogin")}
         backendOk={true}
         onToggleTheme={toggleTheme}
         themeLabel={theme === "dark" ? "night" : "day"}
@@ -76,14 +78,14 @@ export default function Login() {
                 className={`h-14 mb-4 transition-all duration-300 ${theme === 'dark' ? 'filter brightness-0 invert opacity-40' : 'opacity-60'}`}
               />
               <h2 className="text-[20px] font-black uppercase tracking-widest text-[#0f172a] dark:text-white leading-tight">
-                Welcome Back
+                {t("auth.welcomeBack")}
               </h2>
             </div>
 
             <form onSubmit={onLogin} className="space-y-5">
               <div>
                 <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2">
-                  Email ID or Mobile Number
+                  {t("auth.emailOrMobile")}
                 </label>
                 <input
                   className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-sm font-bold placeholder:font-normal placeholder:opacity-70 uppercase tracking-widest shadow-inner shadow-slate-100 dark:shadow-none"
@@ -96,7 +98,7 @@ export default function Login() {
 
               <div>
                 <label className="block text-[10px] font-black tracking-[0.15em] uppercase text-slate-500 dark:text-slate-400 mb-2 mt-4">
-                  Password
+                  {t("auth.password")}
                 </label>
                 <input
                   className="w-full px-4 py-3 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white focus:outline-none focus:border-[#0a3161] focus:ring-1 focus:ring-[#0a3161] dark:focus:border-cyan-500 dark:focus:ring-cyan-500 transition-all text-sm font-mono tracking-[0.2em] placeholder:tracking-normal placeholder:font-sans shadow-inner shadow-slate-100 dark:shadow-none"
@@ -119,9 +121,9 @@ export default function Login() {
                 type="submit" 
                 disabled={!canSubmit || loading}
               >
-                {loading ? "Authenticating..." : (
+                {loading ? t("auth.authenticating") : (
                   <>
-                    <span>Sign In</span>
+                    <span>{t("auth.signIn")}</span>
                     <i className="fa-solid fa-arrow-right text-blue-300 dark:text-white group-hover:translate-x-1 transition-transform mb-[1px]"></i>
                   </>
                 )}
@@ -130,7 +132,7 @@ export default function Login() {
 
             <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
               <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center mb-3">
-                Demo Accounts
+                {t("auth.demoAccounts")}
               </div>
               <div className="flex gap-3 justify-center">
                 <button onClick={() => loadDemo("admin", "pass")} type="button" className="text-[10px] uppercase font-bold tracking-widest px-5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700">admin</button>
@@ -143,7 +145,7 @@ export default function Login() {
       </main>
       
       <div className="py-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
-        City Bus Transit Service
+        {t("welcome.headerTitle")}
       </div>
     </div>
   );

@@ -4,10 +4,12 @@ import { Link, useNavigate } from "react-router-dom";
 import GovHeader from "../components/GovHeader";
 import { useAuth } from "../contexts/AuthContext";
 import useTheme from "../hooks/useTheme";
+import { useTranslation } from "react-i18next";
 
 export default function Register() {
   const nav = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,13 +43,13 @@ export default function Register() {
   return (
     <div className="bg-slate-50 dark:bg-slate-900 min-h-screen">
       <GovHeader
-        lastSyncText="Create Account"
+        lastSyncText={t("auth.createAccount")}
         backendOk={true}
         onToggleTheme={toggleTheme}
         themeLabel={theme === "dark" ? "night" : "day"}
       />
       <div className="gov-banner border-b border-slate-200 dark:border-slate-800 bg-white/50 backdrop-blur-md">
-        Create your SmartBus account.
+        {t("auth.joinPlatform")}
       </div>
 
       <motion.main
@@ -58,14 +60,14 @@ export default function Register() {
       >
         <section className="bg-white dark:bg-[#111111] shadow-none rounded-none w-full max-w-md border border-gray-300 dark:border-gray-700 border-t-4 border-t-[#0a3161] overflow-hidden">
           <div className="p-8 border-b border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#1a1d24] flex flex-col items-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">Create Account</h2>
-            <div className="text-gray-500 text-[11px] uppercase tracking-widest font-black">Sign Up</div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">{t("auth.createAccount")}</h2>
+            <div className="text-gray-500 text-[11px] uppercase tracking-widest font-black">{t("auth.signUp")}</div>
           </div>
 
           <div className="p-8">
             <form onSubmit={onRegister} className="space-y-4">
               <div>
-                <label className="block text-[13px] font-[600] text-slate-700 dark:text-slate-300 mb-1.5">Full Name</label>
+                <label className="block text-[13px] font-[600] text-slate-700 dark:text-slate-300 mb-1.5">{t("auth.fullName")}</label>
                 <input
                   className="w-full px-4 py-3 rounded-none border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#111111] text-gray-900 dark:text-white focus:outline-none focus:border-[#0a3161] dark:focus:border-blue-400 transition-colors"
                   value={name}
@@ -119,7 +121,7 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-[13px] font-[600] text-slate-700 dark:text-slate-300 mb-1.5">Password</label>
+                <label className="block text-[13px] font-[600] text-slate-700 dark:text-slate-300 mb-1.5">{t("auth.password")}</label>
                 <input
                   className="w-full px-4 py-3 rounded-none border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#111111] text-gray-900 dark:text-white focus:outline-none focus:border-[#0a3161] dark:focus:border-blue-400 transition-colors"
                   value={password}
@@ -136,14 +138,14 @@ export default function Register() {
                   type="submit" 
                   disabled={!canSubmit || loading}
                 >
-                  {loading ? "Registering…" : "Register"}
+                  {loading ? t("auth.creating") : t("auth.signUp")}
                 </button>
               </div>
 
               {error && <div className="text-rose-500 bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-900/50 p-3 rounded-lg text-[13px] font-[700] mt-4 text-center">{error}</div>}
 
               <div className="text-slate-500 text-[13px] text-center pt-2 font-[600]">
-                Already have an account? <Link to="/login" className="text-blue-600 hover:underline">Login here</Link>
+                {t("auth.alreadyHaveAccount")} <Link to="/login" className="text-blue-600 hover:underline">Login here</Link>
               </div>
             </form>
           </div>

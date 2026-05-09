@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import GovHeader from "../components/GovHeader";
 import useTheme from "../hooks/useTheme";
 import { Search, MapPin, CalendarDays, Bus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Timetable() {
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   
   const [searchFrom, setSearchFrom] = useState("");
   const [searchTo, setSearchTo] = useState("");
@@ -58,8 +60,8 @@ export default function Timetable() {
         themeLabel={theme === "dark" ? "night" : "day"}
       />
       <div className="bg-[#0a3161] text-white py-1.5 px-4 text-[10px] uppercase tracking-widest font-bold flex justify-between items-center border-b-[3px] border-[#d4af37]">
-        <span>City Bus Transit Service</span>
-        <span>Bus Timetable</span>
+        <span>{t("welcome.headerTitle")}</span>
+        <span>{t("timetable.cityBusTimetable")}</span>
       </div>
       
       <main className="flex-1 p-4 sm:p-6 w-full max-w-5xl mx-auto flex flex-col pb-20">
@@ -69,10 +71,10 @@ export default function Timetable() {
           <div className="bg-slate-50 dark:bg-[#151b27] px-8 py-5 border-b border-slate-300 dark:border-slate-800 flex justify-between items-center">
             <div>
               <h1 className="text-[22px] font-black uppercase tracking-widest text-[#0f172a] dark:text-white m-0 leading-tight">
-                Search Timetable
+                {t("timetable.selectRoute")}
               </h1>
               <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-[0.2em] font-bold">
-                Find schedules between stations
+                {t("search.searchSubtitle")}
               </div>
             </div>
             <Search className="w-10 h-10 text-slate-300 dark:text-slate-700" />

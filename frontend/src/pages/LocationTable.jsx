@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Navigation, Bell, BellRing, Share2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function LocationTable({ trackingData, allRoutes, allStops }) {
+  const { t } = useTranslation();
   const [currentStopIndex, setCurrentStopIndex] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
@@ -157,7 +159,7 @@ export default function LocationTable({ trackingData, allRoutes, allStops }) {
            <div>
               <div className="flex items-center gap-3 mb-2">
                  <span className="px-2 py-0.5 bg-slate-200 dark:bg-[#1f2937] border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-300 text-[9px] font-black uppercase tracking-[0.2em]">
-                   {trackingData.type === 'bus' ? `ID: ${trackingData.data.busId}` : 'TRACKER LINK'}
+                   {trackingData.type === 'bus' ? `ID: ${trackingData.data.busId}` : t("tracking.busDetails")}
                  </span>
                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     <span className={`w-2 h-2 rounded-full ${statusColor} shadow-[0_0_8px_currentColor]`} />
@@ -188,7 +190,7 @@ export default function LocationTable({ trackingData, allRoutes, allStops }) {
              </h3>
              {!isTerminal && (
                <div className="text-slate-800 dark:text-slate-200 text-[14px] font-bold tracking-widest flex items-baseline gap-2 uppercase">
-                 ETA <span className="text-[32px] font-black tracking-tighter text-emerald-600 dark:text-emerald-400">{nextEtaNumber}</span> <span className="text-[12px] text-slate-500">MINUTES</span>
+                 {t("tracking.expected")} <span className="text-[32px] font-black tracking-tighter text-emerald-600 dark:text-emerald-400">{nextEtaNumber}</span> <span className="text-[12px] text-slate-500">{t("tracking.mins")}</span>
                </div>
              )}
           </div>
