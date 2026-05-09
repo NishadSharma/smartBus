@@ -1,7 +1,7 @@
 export const PUBLIC_NOTICES = [
   {
     id: "notice-system-update",
-    title: "System Update: New SmartBus Features",
+    title: "System Update: New smartBus Features",
     message: "Welcome to the new interactive Layout! All sidebars now extend to fill natively, and we've added Live Occupancy tracking arrays. Click the Bell icon in the header anytime to view past broadcasts.",
     date: new Date().toISOString(),
     type: "info"

@@ -216,7 +216,7 @@ export default function CommuterSearch({ user, role }) {
     return (
       <div className="min-h-screen bg-slate-100 dark:bg-[#0a0d14] flex flex-col font-mono text-slate-800 dark:text-slate-200">
         <GovHeader
-          lastSyncText="SmartBus"
+          lastSyncText="smartBus"
           backendOk={true}
           onToggleTheme={toggleTheme}
           themeLabel={theme === "dark" ? "night" : "day"}
@@ -245,7 +245,7 @@ export default function CommuterSearch({ user, role }) {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-[#0a0d14] flex flex-col font-mono text-slate-800 dark:text-slate-200">
       <GovHeader
-        lastSyncText="SmartBus Search"
+        lastSyncText="smartBus Search"
         backendOk={true}
         onToggleTheme={toggleTheme}
         themeLabel={theme === "dark" ? "night" : "day"}

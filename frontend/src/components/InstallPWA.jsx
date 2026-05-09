@@ -39,7 +39,7 @@ export default function InstallPWA() {
           <Download size={20} className="text-white" />
         </div>
         <div>
-          <h4 className="font-bold text-sm">Install SmartBus</h4>
+          <h4 className="font-bold text-sm">Install smartBus</h4>
           <p className="text-xs text-blue-100">Add to home screen for offline access</p>
         </div>
       </div>

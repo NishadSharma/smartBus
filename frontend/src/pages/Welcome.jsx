@@ -36,7 +36,7 @@ export default function Welcome() {
             
             <div className="bg-slate-50 dark:bg-[#151b27] px-8 py-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
               <div>
-                <h1 className="text-[22px] font-black uppercase tracking-widest text-[#0f172a] dark:text-white m-0 leading-tight">
+                <h1 className="text-[22px] font-black tracking-widest text-[#0f172a] dark:text-white m-0 leading-tight">
                   {t("welcome.mainTitle")}
                 </h1>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-[0.2em] font-bold">
